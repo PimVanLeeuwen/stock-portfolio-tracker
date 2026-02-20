@@ -24,6 +24,8 @@ services:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
       - RUN_ONCE=${RUN_ONCE:-false}
+      - CRON_SCHEDULE=${CRON_SCHEDULE:-10 8,17 * * 1-5}
+      - TZ=${TZ:-Europe/Amsterdam}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - POSITIONS=${POSITIONS:-}
       - INDICES=${INDICES:-}

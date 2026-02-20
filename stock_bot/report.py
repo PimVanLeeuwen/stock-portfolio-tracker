@@ -8,6 +8,8 @@ from typing import Optional
 
 import pandas as pd
 
+import pytz
+
 logger = logging.getLogger(__name__)
 
 TG_MAX_CHARS = 4096
@@ -53,6 +55,11 @@ def format_report(
     if now is None:
         now = datetime.now(timezone.utc)
 
+    # Convert to user's timezone for display
+    tz_name = cfg.get("schedule", {}).get("timezone", "Europe/Amsterdam")
+    local_tz = pytz.timezone(tz_name)
+    local_now = now.astimezone(local_tz) if now.tzinfo else local_tz.localize(now)
+
     header = cfg.get("telegram", {}).get("header", "📈 Daily Stock Report")
     footer = cfg.get("telegram", {}).get("footer", "")
     sort_by = cfg["report"].get("sort_by", "day_change_pct")
@@ -63,7 +70,7 @@ def format_report(
 
     # ── Header ──
     lines.append(f"<b>{header}</b>")
-    lines.append(f"📅 {now.strftime('%a %d %b %Y, %H:%M')} UTC")
+    lines.append(f"📅 {local_now.strftime('%a %d %b %Y, %H:%M')} {local_now.strftime('%Z')}")
     lines.append("")
 
     # ── Sort positions ──
@@ -133,18 +140,7 @@ def format_report(
         lines.append(f"💼 Value: <b>{_price(total_value)} {base_ccy}</b>")
         day_arrow = _arrow(total_day_change)
         sign = "+" if total_day_change >= 0 else ""
-        lines.append(f"{day_arrow} Day: {sign}{total_day_change:,.2f} {base_ccy}")
-        lines.append("")
-
-    # ── Index summary ──
-    if index_metrics:
-        lines.append("━━━ <b>Indices</b> ━━━")
-        for idx in index_metrics:
-            sym = str(idx.get("symbol", ""))
-            arrow = _arrow(idx.get("day_change_pct"))
-            lines.append(
-                f"{arrow} <b>{sym}</b>  {_price(idx.get('last_price'))}  {_sign(idx.get('day_change_pct'))}"
-            )
+        lines.append(f"{day_arrow} Day: <b>{sign}{total_day_change:,.2f} {base_ccy}</b>")
         lines.append("")
 
     # ── Footer ──

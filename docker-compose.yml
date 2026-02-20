@@ -31,5 +31,3 @@ services:
       - INDICES=${INDICES:-}
       - FINNHUB_API_KEY=${FINNHUB_API_KEY:-}
       - ALPHAVANTAGE_API_KEY=${ALPHAVANTAGE_API_KEY:-}
-    volumes:
-      - ./config.yml:/app/config.yml:ro

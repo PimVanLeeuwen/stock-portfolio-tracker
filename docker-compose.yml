@@ -25,6 +25,8 @@ services:
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
       - RUN_ONCE=${RUN_ONCE:-false}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - POSITIONS=${POSITIONS:-}
+      - INDICES=${INDICES:-}
       - FINNHUB_API_KEY=${FINNHUB_API_KEY:-}
       - ALPHAVANTAGE_API_KEY=${ALPHAVANTAGE_API_KEY:-}
     volumes:

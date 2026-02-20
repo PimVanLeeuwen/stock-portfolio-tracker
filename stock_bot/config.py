@@ -31,6 +31,31 @@ def _resolve_env_vars(value: Any) -> Any:
     return value
 
 
+def _parse_positions_env(raw: str) -> list[dict]:
+    """Parse POSITIONS env var.
+
+    Format: ``AAPL:12:148.20,MSFT:8,ASML.AS:5``
+    Each entry is ``SYMBOL:UNITS[:COST_BASIS]``.
+    """
+    positions: list[dict] = []
+    for entry in raw.split(","):
+        entry = entry.strip()
+        if not entry:
+            continue
+        parts = entry.split(":")
+        if len(parts) < 2:
+            logger.warning("Skipping malformed position: %s", entry)
+            continue
+        pos: dict = {
+            "symbol": parts[0].strip(),
+            "units": float(parts[1].strip()),
+        }
+        if len(parts) >= 3 and parts[2].strip():
+            pos["cost_basis"] = float(parts[2].strip())
+        positions.append(pos)
+    return positions
+
+
 def load_config(path: str | None = None) -> dict:
     """Load config from YAML file, falling back to sensible defaults."""
     config_path = path or os.environ.get("CONFIG_PATH", DEFAULT_CONFIG_PATH)
@@ -54,6 +79,15 @@ def load_config(path: str | None = None) -> dict:
     cfg["portfolio"].setdefault("base_currency", "EUR")
     cfg["portfolio"].setdefault("positions", [])
 
+    # Allow overriding positions from env: POSITIONS="AAPL:12:148.20,MSFT:8,ASML.AS:5"
+    # Format per entry: SYMBOL:UNITS[:COST_BASIS]  (cost_basis is optional)
+    env_positions = os.environ.get("POSITIONS", "")
+    if env_positions:
+        cfg["portfolio"]["positions"] = _parse_positions_env(env_positions)
+
+    # Allow overriding indices from env: INDICES="^GSPC,^NDX"
+    env_indices = os.environ.get("INDICES", "")
+
     cfg.setdefault("report", {})
     cfg["report"].setdefault(
         "fields",
@@ -70,6 +104,9 @@ def load_config(path: str | None = None) -> dict:
     cfg["report"].setdefault("sort_by", "day_change_pct")
     cfg["report"].setdefault("top_n", 10)
     cfg["report"].setdefault("include_index", [])
+
+    if env_indices:
+        cfg["report"]["include_index"] = [s.strip() for s in env_indices.split(",") if s.strip()]
 
     cfg.setdefault("telegram", {})
     cfg["telegram"].setdefault("bot_token", "")

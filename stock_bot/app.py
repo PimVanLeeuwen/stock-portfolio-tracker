@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""stock-bot – daily portfolio report via Signal."""
+"""stock-bot – daily portfolio report via Telegram."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ from stock_bot.providers.provider_manager import ProviderManager
 from stock_bot.currency import convert_to_base
 from stock_bot.calculations import compute_position_metrics
 from stock_bot.report import format_report
-from stock_bot.signal_sender import send_report
+from stock_bot.telegram_sender import send_report
 from stock_bot.scheduler import run_scheduled
 
 # ---------------------------------------------------------------------------
@@ -125,15 +125,16 @@ def _run_job() -> None:
     logger.debug("Report:\n%s", report_text)
 
     # ---- Send ----
-    sender = cfg["signal"].get("sender", "")
-    recipients = cfg["signal"].get("recipients", [])
-    if not sender or not recipients:
-        logger.warning("Signal sender/recipients not configured – printing report to stdout")
+    tg_cfg = cfg.get("telegram", {})
+    bot_token = tg_cfg.get("bot_token", "") or os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    chat_ids = tg_cfg.get("chat_ids", [])
+    if not bot_token or not chat_ids:
+        logger.warning("Telegram bot_token/chat_ids not configured – printing report to stdout")
         print(report_text)
     else:
-        ok = send_report(report_text, sender, recipients)
+        ok = send_report(report_text, bot_token, chat_ids)
         if not ok:
-            logger.error("Failed to send report via Signal")
+            logger.error("Failed to send report via Telegram")
             _exit_if_run_once(1)
             return
 

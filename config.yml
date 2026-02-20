@@ -29,10 +29,10 @@ report:
     - "^GSPC"
     - "^NDX"
 
-signal:
-  sender: "+31YOURNUMBER"
-  recipients:
-    - "+31RECIPIENT1"
+telegram:
+  bot_token: "${TELEGRAM_BOT_TOKEN}"
+  chat_ids:
+    - "${TELEGRAM_CHAT_ID}"
   header: "📈 Daily Stock Report"
   footer: "— sent by stock-bot"
 

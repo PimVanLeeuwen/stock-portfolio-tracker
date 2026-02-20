@@ -37,8 +37,8 @@ def format_report(
     if now is None:
         now = datetime.now(timezone.utc)
 
-    header = cfg["signal"].get("header", "Daily Stock Report")
-    footer = cfg["signal"].get("footer", "")
+    header = cfg.get("telegram", cfg.get("signal", {})).get("header", "Daily Stock Report")
+    footer = cfg.get("telegram", cfg.get("signal", {})).get("footer", "")
     sort_by = cfg["report"].get("sort_by", "day_change_pct")
     top_n = cfg["report"].get("top_n", 10)
     base_ccy = cfg["portfolio"].get("base_currency", "EUR")

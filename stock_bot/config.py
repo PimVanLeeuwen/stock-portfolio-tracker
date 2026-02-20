@@ -71,11 +71,11 @@ def load_config(path: str | None = None) -> dict:
     cfg["report"].setdefault("top_n", 10)
     cfg["report"].setdefault("include_index", [])
 
-    cfg.setdefault("signal", {})
-    cfg["signal"].setdefault("sender", "")
-    cfg["signal"].setdefault("recipients", [])
-    cfg["signal"].setdefault("header", "Daily Stock Report")
-    cfg["signal"].setdefault("footer", "— sent by stock-bot")
+    cfg.setdefault("telegram", {})
+    cfg["telegram"].setdefault("bot_token", "")
+    cfg["telegram"].setdefault("chat_ids", [])
+    cfg["telegram"].setdefault("header", "Daily Stock Report")
+    cfg["telegram"].setdefault("footer", "— sent by stock-bot")
 
     cfg.setdefault("schedule", {})
     cfg["schedule"].setdefault("times", ["08:10"])

@@ -48,17 +48,23 @@ def period_change_pct(
     if history.empty or "Close" not in history.columns:
         return None
 
-    # Normalise index to tz-naive dates for comparison
+    # Normalise index to tz-naive for comparison
     idx = history.index.tz_localize(None) if history.index.tz else history.index
 
-    ref = pd.Timestamp(reference_date).normalize()
-    # Pick the last close on or before the reference date
+    ref = pd.Timestamp(reference_date)
+    if ref.tzinfo is not None:
+        ref = ref.tz_localize(None)
+    ref = ref.normalize()
+
+    # Pick the last close on or before the reference date (positional lookup)
     mask = idx <= ref
     if not mask.any():
         # Fall back: use the earliest available close
         ref_close = float(history.iloc[0]["Close"])
     else:
-        ref_close = float(history.loc[idx[mask][-1], "Close"])
+        # Get the positional index of the last True in mask
+        pos = mask.nonzero()[0][-1]
+        ref_close = float(history.iloc[pos]["Close"])
 
     if ref_close == 0:
         return None

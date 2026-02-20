@@ -1,0 +1,57 @@
+# =============================================================================
+# stock-bot — docker-compose for Portainer stack deployment
+# =============================================================================
+# This runs:
+#   1. signal-api  – signal-cli REST API (register your number once, then it
+#                    stays persistent in the ./signal-data volume)
+#   2. stock-bot   – the portfolio tracker that sends reports via signal-api
+#
+# QUICK START (test message):
+#   1. Copy .env.example → .env and fill in your phone numbers
+#   2. docker compose up -d signal-api
+#   3. Register your number (see README)
+#   4. docker compose run --rm stock-bot   ← sends one report immediately
+#   5. docker compose up -d                ← starts the scheduled bot
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Signal REST API  (bbernhard/signal-cli-rest-api)
+  # Docs: https://github.com/bbernhard/signal-cli-rest-api
+  # ---------------------------------------------------------------------------
+  signal-api:
+    image: bbernhard/signal-cli-rest-api:latest
+    container_name: signal-api
+    restart: unless-stopped
+    ports:
+      - "${SIGNAL_PORT:-8080}:8080"
+    environment:
+      - MODE=normal
+    volumes:
+      - signal-data:/home/.local/share/signal-cli
+
+  # ---------------------------------------------------------------------------
+  # stock-bot
+  # ---------------------------------------------------------------------------
+  stock-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: stock-bot:latest
+    container_name: stock-bot
+    restart: unless-stopped
+    depends_on:
+      - signal-api
+    environment:
+      - SIGNAL_API_BASE=http://signal-api:8080
+      - RUN_ONCE=${RUN_ONCE:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY:-}
+      - ALPHAVANTAGE_API_KEY=${ALPHAVANTAGE_API_KEY:-}
+    volumes:
+      - ./config.yml:/app/config.yml:ro
+
+volumes:
+  signal-data:
+    driver: local
+

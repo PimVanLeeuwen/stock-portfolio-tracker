@@ -94,25 +94,121 @@ RUN_ONCE=true python app.py
 FINNHUB_API_KEY=your_key RUN_ONCE=true python app.py
 ```
 
-## Running with Docker
+## Running with Docker Compose (recommended)
+
+The `docker-compose.yml` includes both the **signal-cli REST API** and **stock-bot**.
+
+### 1. Prepare environment
 
 ```bash
-# Build
-docker build -t stock-bot .
+cp .env.example .env
+# Edit .env if you want to set FINNHUB_API_KEY, etc.
+```
 
-# Run once
-docker run --rm \
-  -e RUN_ONCE=true \
-  -e SIGNAL_API_BASE=http://host.docker.internal:8080 \
-  -v $(pwd)/config.yml:/app/config.yml:ro \
-  stock-bot
+### 2. Edit `config.yml`
 
-# Run on schedule (daemon)
-docker run -d --name stock-bot \
-  -e SIGNAL_API_BASE=http://signal:8080 \
-  -e FINNHUB_API_KEY=your_key \
-  -v $(pwd)/config.yml:/app/config.yml:ro \
-  stock-bot
+Set your real phone numbers:
+
+```yaml
+signal:
+  sender: "+31612345678"          # YOUR Signal number
+  recipients: ["+31687654321"]    # who receives the report
+```
+
+### 3. Start Signal API and register your number
+
+```bash
+docker compose up -d signal-api
+
+# Register your number (you'll receive an SMS code):
+curl -X POST 'http://localhost:8080/v1/register/+31612345678'
+
+# Verify with the code you received:
+curl -X POST 'http://localhost:8080/v1/register/+31612345678/verify/123456'
+```
+
+### 4. Send a test message (one-shot run)
+
+```bash
+docker compose run --rm -e RUN_ONCE=true stock-bot
+```
+
+This fetches live data and sends one report immediately via Signal. Check your phone!
+
+### 5. Start the scheduled bot
+
+```bash
+docker compose up -d
+```
+
+Both containers run as daemons. stock-bot will send reports at the times in `config.yml`.
+
+### Logs
+
+```bash
+docker compose logs -f stock-bot
+docker compose logs -f signal-api
+```
+
+## Deploy on Portainer (via Git)
+
+Your repo is already on GitHub. In Portainer:
+
+1. Go to **Stacks → Add stack**
+2. Select **Repository**
+3. Fill in:
+   - **Repository URL**: `https://github.com/PimVanLeeuwen/stock-portfolio-tracker`
+   - **Reference**: `main`
+   - **Compose path**: `docker-compose.yml`
+4. Under **Environment variables**, add:
+   | Name | Value |
+   |---|---|
+   | `SIGNAL_PORT` | `8080` |
+   | `RUN_ONCE` | `false` |
+   | `LOG_LEVEL` | `INFO` |
+   | `FINNHUB_API_KEY` | *(optional)* |
+   | `ALPHAVANTAGE_API_KEY` | *(optional)* |
+5. Click **Deploy the stack**
+
+### Register Signal on the server
+
+After the stack is up, SSH into your server (or use Portainer's console) and run:
+
+```bash
+# Register (sends SMS verification to your phone)
+curl -X POST 'http://localhost:8080/v1/register/+31612345678'
+
+# Verify
+curl -X POST 'http://localhost:8080/v1/register/+31612345678/verify/CODE'
+```
+
+### Send a test message from Portainer
+
+In Portainer, go to the **stock-bot** container → **Console** → run:
+
+```bash
+# Or simply recreate with RUN_ONCE:
+docker compose run --rm -e RUN_ONCE=true stock-bot
+```
+
+Or use the signal-api directly to send a quick test:
+
+```bash
+curl -X POST 'http://localhost:8080/v2/send' \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"Hello from stock-bot!","number":"+31612345678","recipients":["+31687654321"]}'
+```
+
+## Running Locally (without Docker)
+
+```bash
+pip install -r requirements.txt
+
+# Run once (prints report to stdout if Signal is not configured)
+RUN_ONCE=true python app.py
+
+# With API keys
+FINNHUB_API_KEY=your_key RUN_ONCE=true python app.py
 ```
 
 ## Running Tests
@@ -135,4 +231,7 @@ The same priority is used for FX rate fetching.
 - If `cost_basis` is omitted for a position, the P/L columns show "—" and only change metrics are reported.
 - Reports are capped at ~5.5 KB to stay within Signal's message limit.
 - The app exits with a non-zero code on fatal errors when `RUN_ONCE=true`.
+- The `signal-data` Docker volume persists your Signal registration across restarts.
+- To update after a git push: in Portainer, go to the stack and click **Pull and redeploy**.
+
 

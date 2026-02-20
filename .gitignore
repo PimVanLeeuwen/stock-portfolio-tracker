@@ -205,3 +205,8 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Docker / deployment
+signal-data/
+docker-compose.override.yml
+

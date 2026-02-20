@@ -1,0 +1,44 @@
+portfolio:
+  base_currency: EUR
+  positions:
+    - symbol: AAPL
+      units: 12
+      cost_basis: 148.20
+    - symbol: MSFT
+      units: 8
+      cost_basis: 310.50
+    - symbol: ASML.AS
+      units: 5
+      # cost_basis omitted – only change report, no P/L
+    - symbol: GOOGL
+      units: 15
+      cost_basis: 131.40
+
+report:
+  fields:
+    - last_price
+    - day_change_pct
+    - pnl_abs
+    - pnl_pct
+    - week_to_date_pct
+    - month_to_date_pct
+    - fiftytwo_wk_range
+  sort_by: day_change_pct
+  top_n: 10
+  include_index:
+    - "^GSPC"
+    - "^NDX"
+
+signal:
+  sender: "+31YOURNUMBER"
+  recipients:
+    - "+31RECIPIENT1"
+  header: "📈 Daily Stock Report"
+  footer: "— sent by stock-bot"
+
+schedule:
+  times:
+    - "08:10"
+    - "17:10"
+  timezone: "Europe/Amsterdam"
+

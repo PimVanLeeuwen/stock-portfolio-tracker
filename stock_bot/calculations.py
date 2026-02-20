@@ -133,6 +133,7 @@ def compute_position_metrics(
         "symbol": symbol,
         "units": units,
         "last_price": lp,
+        "prev_close": pc,
         "day_change_pct": day_change_pct(lp, pc),
         "pnl_abs": pnl_absolute(lp, cb_base, units),
         "pnl_pct": pnl_percent(lp, cb_base),

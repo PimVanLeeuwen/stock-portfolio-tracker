@@ -14,7 +14,7 @@ TG_MAX_CHARS = 4096
 
 
 def _arrow(val) -> str:
-    """Return a colored arrow emoji based on sign."""
+    """Return a colored emoji based on sign."""
     if val is None or (isinstance(val, float) and pd.isna(val)):
         return "➖"
     return "🟢" if val >= 0 else "🔴"
@@ -28,12 +28,13 @@ def _sign(val) -> str:
     return f"{sign}{val:.2f}%"
 
 
-def _money(val) -> str:
-    """Format a monetary value."""
+def _money(val, ccy: str = "") -> str:
+    """Format a monetary value with optional currency."""
     if val is None or (isinstance(val, float) and pd.isna(val)):
         return "—"
     sign = "+" if val >= 0 else ""
-    return f"{sign}{val:,.2f}"
+    s = f"{sign}{val:,.2f}" if val < 0 or val >= 0 else f"{val:,.2f}"
+    return f"{s} {ccy}".strip() if ccy else s
 
 
 def _price(val) -> str:
@@ -63,7 +64,6 @@ def format_report(
     # ── Header ──
     lines.append(f"<b>{header}</b>")
     lines.append(f"📅 {now.strftime('%a %d %b %Y, %H:%M')} UTC")
-    lines.append(f"💰 All values in <b>{base_ccy}</b>")
     lines.append("")
 
     # ── Sort positions ──
@@ -79,41 +79,66 @@ def format_report(
     df = df.head(top_n)
 
     # ── Position cards ──
+    total_value = 0.0
+    total_day_change = 0.0
+    has_portfolio_data = False
+
     for _, row in df.iterrows():
         sym = str(row.get("symbol", ""))
         day_pct = row.get("day_change_pct")
+        price = row.get("last_price")
+        units = row.get("units", 0)
         arrow = _arrow(day_pct)
 
-        lines.append(f"{arrow} <b>{sym}</b>  {_price(row.get('last_price'))} {base_ccy}")
+        # Position value
+        pos_value = None
+        if price is not None and units and units > 0:
+            pos_value = price * units
+            total_value += pos_value
+            has_portfolio_data = True
+            if day_pct is not None and row.get("prev_close") is not None:
+                prev_value = row.get("prev_close") * units
+                total_day_change += pos_value - prev_value
 
-        details: list[str] = []
-        details.append(f"Day: {_sign(day_pct)}")
+        # Title line: emoji + symbol + price
+        lines.append(f"{arrow} <b>{sym}</b> — {_price(price)} {base_ccy}")
 
-        if row.get("pnl_abs") is not None:
-            details.append(f"P/L: {_money(row.get('pnl_abs'))} ({_sign(row.get('pnl_pct'))})")
+        # Units & position value
+        if units and units > 0:
+            val_str = f"  📦 {units:.0f} shares"
+            if pos_value is not None:
+                val_str += f" → <b>{_price(pos_value)} {base_ccy}</b>"
+            lines.append(val_str)
+
+        # Each stat on its own line
+        lines.append(f"  Day:  {_sign(day_pct)}")
 
         wtd = row.get("week_to_date_pct")
+        if wtd is not None:
+            lines.append(f"  WTD: {_sign(wtd)}")
+
         mtd = row.get("month_to_date_pct")
-        if wtd is not None or mtd is not None:
-            parts = []
-            if wtd is not None:
-                parts.append(f"WTD {_sign(wtd)}")
-            if mtd is not None:
-                parts.append(f"MTD {_sign(mtd)}")
-            details.append(" · ".join(parts))
+        if mtd is not None:
+            lines.append(f"  MTD: {_sign(mtd)}")
 
         rng = row.get("fiftytwo_wk_range", "N/A")
         if rng and rng != "N/A":
-            details.append(f"52wk: {rng}")
+            lines.append(f"  52wk: {rng}")
 
-        lines.append("    " + " | ".join(details[:2]))
-        if len(details) > 2:
-            lines.append("    " + " | ".join(details[2:]))
+        lines.append("")  # blank line between stocks
+
+    # ── Portfolio summary ──
+    if has_portfolio_data:
+        lines.append("━━━ <b>Portfolio</b> ━━━")
+        lines.append(f"💼 Value: <b>{_price(total_value)} {base_ccy}</b>")
+        day_arrow = _arrow(total_day_change)
+        sign = "+" if total_day_change >= 0 else ""
+        lines.append(f"{day_arrow} Day: {sign}{total_day_change:,.2f} {base_ccy}")
         lines.append("")
 
     # ── Index summary ──
     if index_metrics:
-        lines.append("─── <b>Indices</b> ───")
+        lines.append("━━━ <b>Indices</b> ━━━")
         for idx in index_metrics:
             sym = str(idx.get("symbol", ""))
             arrow = _arrow(idx.get("day_change_pct"))

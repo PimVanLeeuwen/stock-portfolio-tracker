@@ -107,30 +107,21 @@ def format_report(
                 prev_value = row.get("prev_close") * units
                 total_day_change += pos_value - prev_value
 
-        # Title line: emoji + symbol + price
-        lines.append(f"{arrow} <b>{sym}</b> — {_price(price)} {base_ccy}")
+        # Title line: emoji + symbol + price + position value
+        title = f"{arrow} <b>{sym}</b>  {_price(price)} {base_ccy}"
+        if units and units > 0 and pos_value is not None:
+            title += f"  · {units:.0f}× → <b>{_price(pos_value)} {base_ccy}</b>"
+        lines.append(title)
 
-        # Units & position value
-        if units and units > 0:
-            val_str = f"  📦 {units:.0f} shares"
-            if pos_value is not None:
-                val_str += f" → <b>{_price(pos_value)} {base_ccy}</b>"
-            lines.append(val_str)
-
-        # Each stat on its own line
-        lines.append(f"  Day:  {_sign(day_pct)}")
-
+        # Stats on one line
         wtd = row.get("week_to_date_pct")
-        if wtd is not None:
-            lines.append(f"  WTD: {_sign(wtd)}")
-
         mtd = row.get("month_to_date_pct")
+        stats = f"Day {_sign(day_pct)}"
+        if wtd is not None:
+            stats += f"  WTD {_sign(wtd)}"
         if mtd is not None:
-            lines.append(f"  MTD: {_sign(mtd)}")
-
-        rng = row.get("fiftytwo_wk_range", "N/A")
-        if rng and rng != "N/A":
-            lines.append(f"  52wk: {rng}")
+            stats += f"  MTD {_sign(mtd)}"
+        lines.append(f"<code>{stats}</code>")
 
         lines.append("")  # blank line between stocks
 
